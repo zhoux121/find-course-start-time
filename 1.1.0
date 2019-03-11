@@ -1,0 +1,109 @@
+# read the url page in code
+# find the course form 2018 courses page link and group
+# form btp200 read the url page in code
+# find the course taking time by Fall-3 summer-2 winter-1
+# create a graph counting each courses by percentage each term.
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+import re
+import requests
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+# set up the origin course homepage link
+home_page_BSD_link = "http://www.senecacollege.ca/programs/fulltime/BSD/courses.html#pre-content_menu"
+# set up some useless code
+removed_link0 = 'https://apps.senecacollege.ca/ssos/findOutline.do?subjectCode=DPS943'
+removed_link1 = 'https://apps.senecacollege.ca/ssos/findOutline.do?subjectCode=DPS944'
+garbage_link = 'http://www.senecacollege.ca/school/els/'
+
+
+# read the page code from link drop to find_courses_link,
+def web_page(search_link):
+    html = urlopen(search_link).read()
+    soup = BeautifulSoup(html,features = 'html.parser')
+    return soup
+# 网页源码 web_page(home_page_BSD_link)
+
+
+# find courses link by 2018/2019 Academic Year by called from web_page and drop to course_open_time
+def find_courses_link(soup):
+    course_2018 = soup.find("div",{'class':"accordion parbase"})
+    course_2018_link = course_2018.find_all('a')
+    course_2018_link = [l['href'] for l in course_2018_link]
+    for i in range(3):
+        course_2018_link.remove(garbage_link)
+    course_2018_link.remove(removed_link0)
+    course_2018_link.remove(removed_link1)
+    return course_2018_link
+# print(find_courses_link(web_page(home_page_BSD_link)))
+# [https://apps.senecacollege.ca/ssos/findOutline.do?subjectCode=BAB140] list
+
+
+# come up with the course code from find_course_link
+def course_code(links):
+    # course_code_list holding DPS923 DPS937
+    course_code_list = []
+    for link in links:
+        course_code_list.append(link[-6:]) #[DPS923,DPS937]
+    # for some reason DPS941 and DPS943 is not open
+    return course_code_list
+
+
+# read the course pages find courses starting time from web_page
+# in here links is a list of many processed link
+def course_open_time(links):
+    course_time_list = []
+    for link in links:
+        course_sublink = web_page(link)
+        course_value = course_sublink.find('tr')# find first part is tr by header
+        course_value_p = course_value.find_all({"option":'value'})# find all lines by option header
+        course_value_p = [l['value'] for l in course_value_p] #['20191', '20183', '20182', '20181']
+        course_time_list.append(count_open_time(course_value_p))
+    return course_time_list #[(13, 13, 6), (9, 9, 0), (7, 7, 0)]
+
+
+# show up our Fall-3 summer-2 winter-1 and count in number from course_open_time
+def count_open_time(course_value_p):
+    summer = 0
+    winter = 0
+    fall = 0
+    for i in course_value_p:
+        if i[-1] == '1':
+            winter = winter + 1
+        elif i[-1] == '2':
+            summer = summer + 1
+        else:
+            fall = fall + 1
+    return fall,winter,summer #"12 15 78" f w s
+
+
+# show out graph
+def graph_time(course_c, course_t):
+    summer = []
+    winter = []
+    fall = []
+    for i in course_t:
+        fall.append(i[0])
+        winter.append(i[1])
+        summer.append(i[2])
+    xpos=np.arange(len(course_c))
+    plt.title("Class Open Timebar")
+    plt.ylabel("Times")
+    plt.xticks(xpos,course_c)
+    plt.bar(xpos-0.2,fall,width=0.2,label= "Fall")
+    plt.bar(xpos,winter,width=0.2,label= "Winter")
+    plt.bar(xpos+0.2,summer,width=0.2,label= "Summer")
+    plt.legend()
+    plt.show()
+
+
+# main runing page
+def main(O_link):
+    # ['20191', '20183', '20182', '20181'] --> (12,15,8)
+    course_c = course_code(find_courses_link(web_page(O_link)))
+    course_t = course_open_time(find_courses_link(web_page(O_link)))
+    graph_time(course_c,course_t)
+# USE
+main(home_page_BSD_link)
